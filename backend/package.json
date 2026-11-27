@@ -11,7 +11,9 @@
     "deploy:web": "node infra/deploy-frontend.js",
     "floci:up": "docker compose -f ../infra/floci/docker-compose.yml up -d",
     "test:exams": "node tests/exams.api.test.js",
-    "test:alloc": "node tests/allocation.api.test.js"
+    "test:alloc": "node tests/allocation.api.test.js",
+    "test:halls": "node tests/halls.api.test.js",
+    "test:halls:isolated": "npm --prefix tests/halls-isolated install --no-audit --no-fund --silent && node tests/halls-isolated/run.js"
   },
   "keywords": [],
   "author": "",
