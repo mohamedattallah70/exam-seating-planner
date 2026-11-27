@@ -1,32 +1,26 @@
-// Shared: login page. Sends the login, stores the session, goes to the page for the user's role.
-const form = document.querySelector('#login-form');
-const message = document.querySelector('#login-message');
-
-if (new URLSearchParams(window.location.search).has('expired')) {
-  showMessage(message, 'Your session has expired. Please log in again.');
+const msg = document.getElementById('msg');
+if (new URLSearchParams(location.search).has('expired')) {
+  msg.replaceChildren(ESP.el('div', { class: 'alert warn' }, 'Your session has ended. Please log in again.'));
 }
+if (ESP.session.token) location.href = 'home.html';
 
-const existing = getSession();
-if (existing) window.location.href = HOME_BY_ROLE[existing.user.role];
-
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const login = form.login.value.trim();
-  const password = form.password.value;
-  if (login.length < 3 || !password) {
-    showMessage(message, 'Enter your email or student code and your password.');
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const identifier = document.getElementById('identifier').value.trim();
+  const password = document.getElementById('password').value;
+  if (!identifier || !password) {
+    msg.replaceChildren(ESP.el('div', { class: 'alert error' }, 'Enter your email/student code and password.'));
     return;
   }
-  const button = form.querySelector('button');
-  button.disabled = true;
+  const btn = document.getElementById('submit');
+  btn.disabled = true;
   try {
-    const result = await api('/api/auth/login', { method: 'POST', body: { login, password } });
-    saveSession({ token: result.token, user: result.user });
-    window.location.href = HOME_BY_ROLE[result.user.role];
-  } catch (error) {
-    showMessage(message, error.message);
+    const { token, user } = await ESP.api('/auth/login', { method: 'POST', body: { identifier, password } });
+    ESP.session.save(token, user);
+    location.href = 'home.html';
+  } catch (err) {
+    ESP.showError(msg, err);
   } finally {
-    button.disabled = false;
-    form.password.value = '';
+    btn.disabled = false;
   }
 });

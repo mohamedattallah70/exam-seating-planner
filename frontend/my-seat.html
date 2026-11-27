@@ -3,27 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Seat – Exam Seating Planner</title>
+  <title>My seat · Exam Seating Planner</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<header class="app-header">
-  <h1>Exam Seating Planner</h1>
-  <nav>
-    <span id="who" class="who"></span>
-    <button id="logout" class="secondary" type="button">Log out</button>
-  </nav>
-</header>
-<main class="container">
-  <section class="panel">
-    <h2>My exam seats</h2>
-    <p class="muted">Only published seating plans for upcoming exams are shown.</p>
-    <div id="seat-cards" class="cards"></div>
-    <p id="seat-message" class="message" aria-live="polite"></p>
-  </section>
-</main>
-<script src="js/config.js" defer></script>
-<script src="js/api.js" defer></script>
-<script src="js/my-seat.js" defer></script>
+  <main>
+    <div class="page-head"><div><h1>My seats</h1><p class="muted">Your hall and seat for each upcoming exam (published plans only).</p></div></div>
+    <div id="msg"></div>
+    <div id="cards" class="grid"></div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script>
+    // Seat lookup (owner: Mohamed Attallah). The API takes the student id from
+    // the JWT, so this page never sends one.
+    (async () => {
+      const { el } = ESP;
+      await ESP.initPage({ roles: ['student'] });
+      try {
+        const { seats } = await ESP.api('/me/seats');
+        if (!seats.length) { document.getElementById('msg').append(el('div', { class: 'alert warn' }, 'No seats published yet. Check again closer to your exams.')); return; }
+        document.getElementById('cards').replaceChildren(...seats.map((s) => el('article', { class: 'card' },
+          el('h2', {}, s.course_code), el('p', { class: 'muted' }, s.title),
+          el('p', {}, `${ESP.fmtDate(s.exam_date)} at ${s.start_time} (${s.duration_min} min)`),
+          el('p', {}, `${s.hall}, ${s.building}`),
+          el('p', { class: 'big-seat' }, `Seat ${s.seat}`),
+          el('p', { class: 'muted small' }, `Row ${s.seat.replace(/[0-9]+$/, '')}, seat number ${s.colNo}`))));
+      } catch (err) { ESP.showError(document.getElementById('msg'), err); }
+    })();
+  </script>
 </body>
 </html>

@@ -3,65 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seat Allocation – Exam Seating Planner</title>
+  <title>Seat allocation · Exam Seating Planner</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<header class="app-header">
-  <h1>Exam Seating Planner</h1>
-  <nav>
-    <!-- Other services' pages: <a href="halls.html">Halls</a> <a href="exams.html">Exams</a> -->
-    <a href="allocation.html">Seat allocation</a>
-    <span id="who" class="who"></span>
-    <button id="logout" class="secondary" type="button">Log out</button>
-  </nav>
-</header>
-<main class="container">
-  <section class="panel">
-    <h2>Exams</h2>
-    <table>
-      <thead>
-        <tr><th>Course</th><th>Date</th><th>Halls</th><th>Enrolled</th><th>Seated</th><th>Status</th><th></th></tr>
-      </thead>
-      <tbody id="exam-rows"></tbody>
-    </table>
-    <p id="overview-message" class="message" aria-live="polite"></p>
-  </section>
+  <main>
+    <div class="page-head"><div><h1>Seat allocation</h1><p class="muted">Run, check, adjust and publish seating plans.</p></div></div>
 
-  <section id="exam-panel" class="panel hidden">
-    <h2 id="exam-title"></h2>
-    <p class="muted">Rules: halls are filled one at a time in the exam's hall order; seats row by row, left to right;
-      blocked seats are skipped; students in student-code order. Spacing uses every other seat in a row.</p>
-    <div class="row">
-      <label class="row"><input id="spacing" type="checkbox"> Spacing (every other seat)</label>
-      <button id="run" type="button">Run allocation</button>
-      <button id="publish" type="button" class="secondary">Publish</button>
-      <button id="clear" type="button" class="danger">Clear draft</button>
-    </div>
-    <p id="action-message" class="message" aria-live="polite"></p>
+    <section class="card">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Course</th><th>Date</th><th>Halls</th><th>Enrolled</th><th>Seated</th><th>Status</th><th></th></tr></thead>
+        <tbody id="exam-rows"></tbody>
+      </table></div>
+      <div id="overview-msg"></div>
+    </section>
 
-    <h3>Summary</h3>
-    <p id="summary-line"></p>
-    <table>
-      <thead><tr><th>Order</th><th>Hall</th><th>Seats used</th><th>Seat map</th></tr></thead>
-      <tbody id="hall-rows"></tbody>
-    </table>
+    <section class="card hidden" id="exam-panel">
+      <h2 id="exam-title"></h2>
+      <details class="small muted"><summary>Allocation rules</summary>
+        <ol>
+          <li>Students are seated in student-code order (repeatable result).</li>
+          <li>Halls are ordered by usable seats, largest first, then by name.</li>
+          <li><strong>Fill</strong>: fill hall 1 completely, then hall 2… (fewest halls and proctors). <strong>Balance</strong>: each hall gets a share proportional to its usable seats.</li>
+          <li>Inside a hall: row by row from the front (A, B…), left to right (1, 2…). Blocked seats are skipped.</li>
+          <li><strong>Spacing</strong>: only odd columns are used, so nobody sits side by side.</li>
+          <li>Not enough seats → nothing is saved. The whole plan is saved in one transaction.</li>
+          <li>Later changes (seat blocked, hall resized, roster or halls changed) are re-checked automatically: published plans move affected students to the next free seat; draft plans are marked <em>needs re-allocation</em>.</li>
+        </ol>
+      </details>
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:0 0 auto"><label for="strategy">Strategy</label><select id="strategy"><option value="fill">Fill halls in order</option><option value="balance">Balance across halls</option></select></div>
+        <div style="flex:0 0 auto"><label><input id="spacing" type="checkbox"> Spacing (odd columns only)</label></div>
+        <div style="flex:0 0 auto"><button id="run" type="button">Run allocation</button></div>
+        <div style="flex:0 0 auto"><button id="publish" type="button" class="secondary">Publish</button></div>
+        <div style="flex:0 0 auto"><button id="clear" type="button" class="danger">Clear draft</button></div>
+      </div>
+      <div id="action-msg"></div>
+      <p id="summary-line"></p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Order</th><th>Hall</th><th>Usable seats</th><th>Seats used</th><th>Seat map</th></tr></thead>
+        <tbody id="hall-rows"></tbody>
+      </table></div>
 
-    <h3>Assigned students</h3>
-    <form id="search-form" class="row">
-      <input id="search" class="grow" placeholder="Search student code or name" maxlength="60">
-      <select id="hall-filter"><option value="">All halls</option></select>
-      <button type="submit">Search</button>
-    </form>
-    <table>
-      <thead><tr><th>Student code</th><th>Name</th><th>Hall</th><th>Seat</th><th>Move to</th></tr></thead>
-      <tbody id="assignment-rows"></tbody>
-    </table>
-    <p id="move-message" class="message" aria-live="polite"></p>
-  </section>
-</main>
-<script src="js/config.js" defer></script>
-<script src="js/api.js" defer></script>
-<script src="js/allocation.js" defer></script>
+      <h3>Assigned students</h3>
+      <form id="search-form" class="row">
+        <div><input id="search" placeholder="Search student code or name" maxlength="60"></div>
+        <div style="flex:0 0 auto"><select id="hall-filter"><option value="">All halls</option></select></div>
+        <div style="flex:0 0 auto"><button type="submit">Search</button></div>
+      </form>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Student code</th><th>Name</th><th>Hall</th><th>Seat</th><th>Move to</th></tr></thead>
+        <tbody id="assignment-rows"></tbody>
+      </table></div>
+    </section>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/allocation.js"></script>
 </body>
 </html>

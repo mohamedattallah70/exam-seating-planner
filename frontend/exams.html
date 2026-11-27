@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exams · Exam Seating Planner</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main>
+    <div class="page-head">
+      <div><h1 id="page-title">Exams</h1><p class="muted" id="page-sub">Exam timetable, halls and rosters.</p></div>
+      <button id="new-btn" class="hidden" type="button">+ New exam</button>
+    </div>
+
+    <section class="card hidden" id="create-card">
+      <h2>New exam</h2>
+      <div id="create-form"></div>
+    </section>
+
+    <section class="card">
+      <form id="filters" class="row">
+        <div><label for="q-course">Course / title</label><input id="q-course" placeholder="e.g. CS301"></div>
+        <div><label for="q-from">From</label><input id="q-from" type="date"></div>
+        <div><label for="q-to">To</label><input id="q-to" type="date"></div>
+        <div><label for="q-status">Seating plan</label>
+          <select id="q-status"><option value="">Any</option><option value="none">Not allocated</option><option value="draft">Draft</option><option value="published">Published</option><option value="needs_reallocation">Needs reallocation</option></select>
+        </div>
+        <div style="flex:0 0 auto"><button type="submit">Search</button></div>
+      </form>
+      <div id="list-msg"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Course</th><th>Date</th><th>Time</th><th>Halls</th><th>Students / seats</th><th>Seating plan</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/exam-form.js"></script>
+  <script src="js/exams.js"></script>
+</body>
+</html>

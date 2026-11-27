@@ -3,40 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seat Map – Exam Seating Planner</title>
+  <title>Seat map · Exam Seating Planner</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<header class="app-header">
-  <h1>Exam Seating Planner</h1>
-  <nav>
-    <a id="back" href="index.html">Back</a>
-    <span id="who" class="who"></span>
-    <button id="logout" class="secondary" type="button">Log out</button>
-  </nav>
-</header>
-<main class="container">
-  <section class="panel">
-    <div class="row no-print">
-      <button id="print" type="button">Print / Save as PDF</button>
-    </div>
-    <h2 id="map-title"></h2>
-    <p id="map-details" class="muted"></p>
-    <p id="map-message" class="message no-print" aria-live="polite"></p>
-    <div class="front">FRONT (exam desk)</div>
-    <div id="seat-grid" class="seat-grid"></div>
-    <div class="legend"><span class="l-free">Free</span><span class="l-taken">Student</span><span class="l-blocked">Blocked</span></div>
-  </section>
-  <section class="panel print-break">
-    <h2>Attendance list (by student code)</h2>
-    <table>
-      <thead><tr><th>Student code</th><th>Name</th><th>Seat</th><th>Signature</th></tr></thead>
-      <tbody id="list-rows"></tbody>
-    </table>
-  </section>
-</main>
-<script src="js/config.js" defer></script>
-<script src="js/api.js" defer></script>
-<script src="js/seat-map.js" defer></script>
+  <main>
+    <div id="page-msg"></div>
+
+    <!-- proctor: list of assigned halls (shown when no exam/hall is given) -->
+    <section class="card hidden" id="list-card">
+      <h1>My halls</h1>
+      <p class="muted">Halls you supervise. Seat maps open once the plan is published.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Exam</th><th>When</th><th>Hall</th><th>Seat map</th></tr></thead>
+        <tbody id="hall-rows"></tbody>
+      </table></div>
+    </section>
+
+    <!-- one hall's printable seat map -->
+    <section class="card hidden" id="map-card">
+      <div class="page-head" style="margin:0">
+        <div><h1 id="map-title"></h1><p id="map-details" class="muted"></p></div>
+        <button id="print" type="button" class="no-print">Print / Save as PDF</button>
+      </div>
+      <div class="front">FRONT (exam desk)</div>
+      <div id="seat-grid" class="seat-grid"></div>
+      <div class="legend"><span class="l-free">Free</span><span class="l-taken">Student</span><span class="l-blocked">Blocked</span></div>
+    </section>
+    <section class="card hidden print-break" id="att-card">
+      <h2>Attendance list (by student code)</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Student code</th><th>Name</th><th>Seat</th><th style="width:35%">Signature</th></tr></thead>
+        <tbody id="list-rows"></tbody>
+      </table></div>
+    </section>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/seat-map.js"></script>
 </body>
 </html>

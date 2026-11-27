@@ -1,100 +1,77 @@
-// Shared: one helper for every API call (adds the session token, handles errors).
-// The token is kept in sessionStorage: it disappears when the browser tab is closed.
+// Shared fetch wrapper + small DOM helpers used by every page.
+// Data is always inserted with textContent (never innerHTML) to prevent XSS.
+window.ESP = window.ESP || {};
 
-function getSession() {
-  try {
-    return JSON.parse(sessionStorage.getItem('session') || 'null');
-  } catch {
-    return null;
+ESP.ApiError = class extends Error {
+  constructor(status, error) {
+    super(error?.message || `Request failed (${status})`);
+    this.status = status;
+    this.code = error?.code;
+    this.details = error?.details;
   }
-}
+};
 
-function saveSession(session) {
-  sessionStorage.setItem('session', JSON.stringify(session));
-}
+ESP.session = {
+  get token() { return sessionStorage.getItem('esp_token'); },
+  get user() { try { return JSON.parse(sessionStorage.getItem('esp_user')); } catch { return null; } },
+  save(token, user) { sessionStorage.setItem('esp_token', token); sessionStorage.setItem('esp_user', JSON.stringify(user)); },
+  clear() { sessionStorage.removeItem('esp_token'); sessionStorage.removeItem('esp_user'); },
+};
 
-function clearSession() {
-  sessionStorage.removeItem('session');
-}
-
-// Sends a request and returns the parsed JSON. Throws an Error with the API message if not 2xx.
-// 401 = not logged in / session expired -> back to the login page.
-async function api(path, { method = 'GET', body } = {}) {
-  const session = getSession();
+// ESP.api('/exams', { method: 'POST', body: {...} })
+ESP.api = async function api(path, { method = 'GET', body, query } = {}) {
+  const url = new URL(ESP_CONFIG.API_BASE + path);
+  if (query) Object.entries(query).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v); });
   const headers = {};
-  if (session) headers.Authorization = `Bearer ${session.token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (ESP.session.token) headers.Authorization = `Bearer ${ESP.session.token}`;
 
-  let response;
+  let res;
   try {
-    response = await fetch(API_BASE_URL + path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body)
-    });
+    res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
   } catch {
-    throw new Error('Cannot reach the server. Check your connection and try again.');
+    throw new ESP.ApiError(0, { code: 'NETWORK', message: 'Cannot reach the server. Is the backend running?' });
   }
-
-  let data = null;
-  if ((response.headers.get('content-type') || '').includes('application/json')) {
-    data = await response.json();
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
+  if (res.status === 401 && !path.startsWith('/auth/login')) {
+    ESP.session.clear();
+    location.href = 'index.html?expired=1';
   }
-
-  if (response.status === 401 && !path.startsWith('/api/auth/login')) {
-    clearSession();
-    window.location.href = 'index.html?expired=1';
-    throw new Error('Session expired.');
-  }
-  if (!response.ok) {
-    const error = new Error(data?.error?.message || `Request failed (${response.status})`);
-    error.status = response.status;
-    error.code = data?.error?.code;
-    throw error;
-  }
+  if (!res.ok) throw new ESP.ApiError(res.status, data?.error);
   return data;
-}
+};
 
-// Every protected page calls this first. Wrong role -> sent to its own home page.
-const HOME_BY_ROLE = { admin: 'allocation.html', proctor: 'proctor.html', student: 'my-seat.html' };
-
-function requirePage(...roles) {
-  const session = getSession();
-  if (!session) {
-    window.location.href = 'index.html';
-    return null;
-  }
-  if (!roles.includes(session.user.role)) {
-    window.location.href = HOME_BY_ROLE[session.user.role] || 'index.html';
-    return null;
-  }
-  const who = document.querySelector('#who');
-  if (who) who.textContent = `${session.user.name} (${session.user.role})`;
-  const logout = document.querySelector('#logout');
-  if (logout) {
-    logout.addEventListener('click', async () => {
-      try { await api('/api/auth/logout', { method: 'POST' }); } catch { /* already logged out */ }
-      clearSession();
-      window.location.href = 'index.html';
-    });
-  }
-  return session;
-}
-
-// Small helpers to build the page safely: text is always set with textContent (no XSS).
-function el(tag, text, className) {
+// el('td', { class: 'x', onclick: fn }, 'text', childNode)
+ESP.el = function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
-  if (text !== undefined && text !== null) node.textContent = String(text);
-  if (className) node.className = className;
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    else if (k === 'class') node.className = v;
+    else if (k === 'dataset') Object.assign(node.dataset, v);
+    else node.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of children.flat()) {
+    if (c === null || c === undefined || c === false) continue;
+    node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
   return node;
-}
+};
 
-function showMessage(target, text, ok = false) {
-  target.textContent = text;
-  target.className = `message ${ok ? 'ok' : 'error'}`;
-}
+// Renders an API error (with field details) into a container.
+ESP.showError = function showError(container, err) {
+  container.replaceChildren(ESP.el('div', { class: 'alert error' },
+    ESP.el('strong', {}, err.message || 'Something went wrong'),
+    err.details?.length ? ESP.el('ul', {}, err.details.map((d) => ESP.el('li', {}, d.field ? `${d.field}: ${d.message}` : (d.message || JSON.stringify(d))))) : null));
+};
 
-function formatDate(isoDate) {
-  const date = new Date(`${isoDate}T00:00:00`);
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-}
+ESP.toast = function toast(message, type = 'ok') {
+  let box = document.getElementById('toast');
+  if (!box) { box = ESP.el('div', { id: 'toast' }); document.body.append(box); }
+  const item = ESP.el('div', { class: `alert ${type}` }, message);
+  box.append(item);
+  setTimeout(() => item.remove(), 4500);
+};
+
+ESP.fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : '');
+ESP.fmtTime = (t) => (t ? String(t).slice(0, 5) : '');

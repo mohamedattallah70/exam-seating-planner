@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exam · Exam Seating Planner</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main>
+    <p class="no-print"><a href="exams.html">← All exams</a></p>
+    <div id="page-msg"></div>
+    <div class="page-head">
+      <div><h1 id="title">Exam</h1><p class="muted" id="when"></p></div>
+      <div class="row admin-only hidden" style="flex:0 0 auto">
+        <button type="button" class="secondary" id="edit-btn">Edit / reschedule</button>
+        <button type="button" class="danger" id="delete-btn">Delete</button>
+      </div>
+    </div>
+    <div id="notes"></div>
+
+    <section class="card hidden" id="edit-card"><h2>Edit / reschedule</h2><div id="edit-form"></div></section>
+
+    <section class="card">
+      <h2>Halls &amp; proctors</h2>
+      <div id="halls"></div>
+      <form id="proctor-form" class="row admin-only hidden" style="margin-top:.75rem">
+        <div><label for="p-hall">Hall</label><select id="p-hall" required></select></div>
+        <div><label for="p-user">Proctor</label><select id="p-user" required></select></div>
+        <div style="flex:0 0 auto"><button type="submit">Assign proctor</button></div>
+      </form>
+      <div id="proctor-msg"></div>
+    </section>
+
+    <section class="card admin-only hidden">
+      <h2>Import roster</h2>
+      <p class="muted small">Paste student codes (one per line or comma-separated), or upload a CSV with a <code>student_code</code> column. Invalid, unknown, duplicate, already-enrolled and timetable-clashing students are reported and skipped.</p>
+      <div class="row">
+        <div><label for="paste">Paste codes</label><textarea id="paste" placeholder="S1001&#10;S1002, S1003"></textarea></div>
+        <div><label for="csv">…or CSV file (uploaded to S3)</label><input id="csv" type="file" accept=".csv,text/csv"></div>
+      </div>
+      <button type="button" id="import-btn">Import</button>
+      <div id="import-report"></div>
+    </section>
+
+    <section class="card">
+      <div class="page-head" style="margin:0">
+        <h2 id="roster-title">Roster</h2>
+        <input id="roster-search" placeholder="Search code or name" style="max-width:240px">
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Student code</th><th>Name</th><th>Enrolled</th><th class="admin-only hidden"></th></tr></thead>
+        <tbody id="roster"></tbody>
+      </table></div>
+    </section>
+
+    <section class="card admin-only hidden">
+      <h2>Import history</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>Source</th><th>Accepted</th><th>Rejected</th><th>By</th></tr></thead>
+        <tbody id="imports"></tbody>
+      </table></div>
+    </section>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/exam-form.js"></script>
+  <script src="js/exam-detail.js"></script>
+</body>
+</html>

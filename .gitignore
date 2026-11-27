@@ -1,5 +1,11 @@
 node_modules/
 .env
+.env.*
+!.env.example
+*.log
 .DS_Store
-Thumbs.db
-.vercel/
+# course material / private notes (not ours to publish)
+docs/*.zip
+docs/CloudComputing_CloudSecurity_CW.pdf
+docs/Final_Report_components*.pdf
+docs/announcement.md
