@@ -1,6 +1,6 @@
 # Exam & Enrolment service — API test results
 
-Run: 2026-11-27T22:03:50.993Z against the deployed stack (gateway → services → Neon + Floci). **26/27 passed.**
+Run: 2026-11-28T14:50:50.609Z against the deployed stack (gateway → services → Neon + Floci). **27/27 passed.**
 
 | ID | Type | Scenario | Expected | Actual | Result |
 |---|---|---|---|---|---|
@@ -13,7 +13,7 @@ Run: 2026-11-27T22:03:50.993Z against the deployed stack (gateway → services �
 | EX-N7 | Normal | Proctor list only shows own exams | 200, every exam assigned to proctor1 | 200 | PASS |
 | EX-N8 | Normal | Holiday check: 2027-01-07 (Coptic Christmas) via Calendarific | 200, isHoliday=true | 200 isHoliday=true source=cache Egyptian public holiday: Coptic Christmas Day | PASS |
 | EX-N9 | Normal | Second holiday check is served from DynamoDB cache | 200, source=cache | 200 source=cache | PASS |
-| EX-N10 | Normal | Reschedule exam publishes exam.rescheduled to SNS -> SQS | 200 and SQS message count increases | 200; queue 0 -> 0 | FAIL |
+| EX-N10 | Normal | Reschedule exam publishes exam.rescheduled to SNS -> SQS -> allocation worker | 200 and the worker logs event_handled for this exam | 200; worker handled exam.rescheduled: true | PASS |
 | EX-I1 | Invalid input | Create exam with bad course code, past-format date, 10-min duration | 400 with field details | 400 VALIDATION_ERROR | PASS |
 | EX-I2 | Invalid input | Create exam in the past | 400 DATE_IN_PAST | 400 DATE_IN_PAST | PASS |
 | EX-I3 | Business rule | Book hall A for an overlapping exam (12:10, inside the 15-min turnover) | 409 HALL_BOOKED | 409 HALL_BOOKED | PASS |

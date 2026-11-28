@@ -5,7 +5,6 @@
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('@neondatabase/serverless');
-const { SQSClient, GetQueueAttributesCommand } = require('@aws-sdk/client-sqs');
 const { AWS, RESOURCES } = require('../shared/config');
 
 const API = 'http://localhost:8080/api';
@@ -81,14 +80,18 @@ const expectStatus = (r, s, extra = true) => ({ actual: `${r.status}${r.data?.er
     const r = await call('GET', '/holidays/check?date=2027-03-01', { token: admin });
     return { actual: `${r.status} source=${r.data?.source}`, pass: r.status === 200 && r.data.source === 'cache' };
   });
-  await test('EX-N10', 'Normal', 'Reschedule exam publishes exam.rescheduled to SNS -> SQS', '200 and SQS message count increases', async () => {
-    const sqs = new SQSClient(AWS);
-    const count = async () => Number((await sqs.send(new GetQueueAttributesCommand({ QueueUrl: RESOURCES.queueUrl, AttributeNames: ['ApproximateNumberOfMessages'] }))).Attributes.ApproximateNumberOfMessages);
-    const before = await count();
+  await test('EX-N10', 'Normal', 'Reschedule exam publishes exam.rescheduled to SNS -> SQS -> allocation worker', '200 and the worker logs event_handled for this exam', async () => {
+    const { CloudWatchLogsClient, FilterLogEventsCommand } = require('@aws-sdk/client-cloudwatch-logs');
+    const logs = new CloudWatchLogsClient(AWS);
+    const since = Date.now() - 5000;
     const r = await call('PUT', `/exams/${e1}`, { token: admin, body: { ...base, courseCode: 'TST101', examDate: '2027-02-11', startTime: '10:00', hallIds: [hA, hB] } });
-    await new Promise((res) => setTimeout(res, 1500));
-    const after = await count();
-    return { actual: `${r.status}; queue ${before} -> ${after}`, pass: r.status === 200 && after > before };
+    let handled = false;
+    for (let i = 0; i < 20 && !handled; i += 1) {
+      await new Promise((res) => setTimeout(res, 1500));
+      const { events = [] } = await logs.send(new FilterLogEventsCommand({ logGroupName: RESOURCES.logGroup('allocation'), startTime: since }));
+      handled = events.some((e) => e.message.includes('"event_handled"') && e.message.includes('"exam.rescheduled"') && e.message.includes(`"examId":${e1}`));
+    }
+    return { actual: `${r.status}; worker handled exam.rescheduled: ${handled}`, pass: r.status === 200 && handled };
   });
 
   // ----- invalid input / business rules -----
