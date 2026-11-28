@@ -6,6 +6,10 @@
 // (esp/db/halls, esp/jwt) via shared/db and shared/auth.
 const { createService } = require('../../shared/createService');
 const routes = require('./routes');
+const { useRevocationCheck } = require('../auth/revocation');
+
+// Reject tokens that were revoked at logout (DynamoDB EspRevokedTokens).
+useRevocationCheck();
 
 const service = createService('halls', (app) => app.use('/api/halls', routes));
 
