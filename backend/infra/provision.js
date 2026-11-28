@@ -189,7 +189,8 @@ function policyFor(service) {
   if (service === 'allocation') {
     st.push(
       { Sid: 'ConsumeEvents', Effect: 'Allow', Action: ['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'], Resource: arn.queue(RESOURCES.queueName) },
-      { Sid: 'SeatMapExports', Effect: 'Allow', Action: ['s3:PutObject', 's3:GetObject'], Resource: `${arn.bucket(B.seatmaps)}/*` },
+      { Sid: 'SeatMapExports', Effect: 'Allow', Action: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'], Resource: `${arn.bucket(B.seatmaps)}/*` },
+      { Sid: 'ListSeatMapExports', Effect: 'Allow', Action: 's3:ListBucket', Resource: arn.bucket(B.seatmaps) },
       { Sid: 'AllocationMetrics', Effect: 'Allow', Action: 'cloudwatch:PutMetricData', Resource: '*', Condition: { StringEquals: { 'cloudwatch:namespace': `${RESOURCES.metricNamespace}/Allocation` } } });
   }
   return { Version: '2012-10-17', Statement: st };
