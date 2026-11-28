@@ -84,8 +84,11 @@ const table = (rows, cols) => (rows.length ? [`| ${cols.join(' | ')} |`, `|${col
   const history = [];
   for (const a of alarms) {
     // 2 h back: an alarm may already be in ALARM from an earlier probe run (Floci keeps the state).
-    const { AlarmHistoryItems = [] } = await cw.send(new CW.DescribeAlarmHistoryCommand({ AlarmName: a.AlarmName, HistoryItemType: 'StateUpdate', StartDate: new Date(started.getTime() - 2 * 3600e3) }));
-    AlarmHistoryItems.forEach((h) => history.push({ at: h.Timestamp.toISOString(), alarm: a.AlarmName, summary: h.HistorySummary }));
+    // Filtered here because Floci 2.5.0 drops items when StartDate is passed.
+    const from = started.getTime() - 2 * 3600e3;
+    const { AlarmHistoryItems = [] } = await cw.send(new CW.DescribeAlarmHistoryCommand({ AlarmName: a.AlarmName, HistoryItemType: 'StateUpdate', MaxRecords: 100 }));
+    AlarmHistoryItems.filter((h) => h.Timestamp.getTime() >= from)
+      .forEach((h) => history.push({ at: h.Timestamp.toISOString(), alarm: a.AlarmName, summary: h.HistorySummary }));
   }
   history.sort((x, y) => x.at.localeCompare(y.at));
 
