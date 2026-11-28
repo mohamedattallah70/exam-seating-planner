@@ -123,6 +123,9 @@ async function provisionLogs() {
     ['/esp/gateway', 'Forbidden403', '{ $.event = "request" && $.status = 403 }', 'Forbidden403'],
     ['/esp/gateway', 'ServerErrors5xx', '{ $.event = "request" && $.status >= 500 }', 'ServerErrors5xx'],
     ['/esp/auth', 'FailedLogins', '{ $.event = "login_failed" }', 'FailedLogins'],
+    // Auth hardening (Rishi): lockouts and rate-limited login bursts
+    ['/esp/auth', 'AccountLockouts', '{ $.event = "account_locked" }', 'AccountLockouts'],
+    ['/esp/auth', 'LoginRateLimited', '{ $.event = "login_rate_limited" }', 'LoginRateLimited'],
   ];
   for (const [group, name, pattern, metric] of filters) {
     await ok(`metric filter ${name}`, () => cwl.send(new CWL.PutMetricFilterCommand({ logGroupName: group, filterName: name, filterPattern: pattern, metricTransformations: [{ metricName: metric, metricNamespace: ns, metricValue: '1', defaultValue: 0 }] })));
@@ -131,6 +134,9 @@ async function provisionLogs() {
     ['ESP-FailedLogins-BruteForce', 'FailedLogins', 5, 'Possible password guessing: 5+ failed logins in 5 minutes'],
     ['ESP-Forbidden-Spike', 'Forbidden403', 10, 'Possible privilege probing: 10+ 403 responses in 5 minutes'],
     ['ESP-ServerErrors', 'ServerErrors5xx', 1, 'Any 5xx error from the API'],
+    ['ESP-Unauthorized-Spike', 'Unauthorized401', 20, 'Possible token guessing/replay: 20+ 401 responses in 5 minutes'],
+    ['ESP-AccountLockout', 'AccountLockouts', 1, 'An account was locked after 5 failed logins'],
+    ['ESP-LoginRateLimited', 'LoginRateLimited', 1, 'An IP hit the login rate limit (10 failed attempts in 15 minutes)'],
   ];
   for (const [name, metric, threshold, desc] of alarms) {
     await ok(`alarm ${name}`, () => cw.send(new CW.PutMetricAlarmCommand({ AlarmName: name, AlarmDescription: desc, Namespace: ns, MetricName: metric, Statistic: 'Sum', Period: 300, EvaluationPeriods: 1, Threshold: threshold, ComparisonOperator: 'GreaterThanOrEqualToThreshold', TreatMissingData: 'notBreaching' })));
@@ -179,7 +185,11 @@ function policyFor(service) {
   ];
   const publish = { Sid: 'PublishDomainEvents', Effect: 'Allow', Action: 'sns:Publish', Resource: RESOURCES.topicArn };
   if (service === 'auth') st.push({ Sid: 'RevokedTokens', Effect: 'Allow', Action: ['dynamodb:GetItem', 'dynamodb:PutItem'], Resource: arn.table(RESOURCES.tables.revokedTokens) });
-  if (service === 'halls') st.push(publish, { Sid: 'LayoutExports', Effect: 'Allow', Action: ['s3:PutObject', 's3:GetObject'], Resource: `${arn.bucket(B.layouts)}/*` });
+  if (service === 'halls') {
+    st.push(publish, { Sid: 'LayoutExports', Effect: 'Allow', Action: ['s3:PutObject', 's3:GetObject'], Resource: `${arn.bucket(B.layouts)}/*` },
+      // read-only revocation check on every request (services/auth/revocation.js); only auth may write
+      { Sid: 'CheckRevokedTokens', Effect: 'Allow', Action: 'dynamodb:GetItem', Resource: arn.table(RESOURCES.tables.revokedTokens) });
+  }
   if (service === 'exams') {
     st.push(publish,
       { Sid: 'CalendarificKey', Effect: 'Allow', Action: 'secretsmanager:GetSecretValue', Resource: arn.secret(RESOURCES.secrets.calendarific) },

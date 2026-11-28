@@ -5,14 +5,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Halls &amp; seat layouts · Exam Seating Planner</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Hall page only (owner: Mohamed Rishi) */
+    .seat-grid button.seat { color: inherit; font-weight: 400; display: block; width: 100%; cursor: pointer; border-color: var(--line); }
+    .seat-grid button.seat:hover { outline: 2px solid var(--primary); background: #fff; }
+    .seat-grid button.seat.blocked:hover { background: #fbe4e4; }
+    .seat-grid .seat.selected { outline: 3px solid var(--primary); }
+    .impact { border-left: 4px solid var(--primary); padding: .5rem .75rem; margin: .75rem 0; background: #f7f9ff; }
+    .impact.bad { border-left-color: var(--danger); background: #fff5f5; }
+    .impact ul { margin: .3rem 0 .3rem 1.1rem; padding: 0; }
+    .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin: .5rem 0; }
+  </style>
 </head>
 <body>
   <main>
-    <div class="page-head"><div><h1>Halls &amp; seat layouts</h1><p class="muted">Hall &amp; Seat Layout service — page under construction (owner: Mohamed Rishi).</p></div></div>
+    <div class="page-head">
+      <div><h1>Halls &amp; seat layouts</h1><p class="muted" id="page-sub">Exam halls, their seat grids and blocked seats.</p></div>
+      <button id="new-btn" class="hidden" type="button">+ New hall</button>
+    </div>
+    <div id="page-msg"></div>
+
+    <section class="card hidden" id="create-card">
+      <h2>New hall</h2>
+      <form id="create-form" novalidate>
+        <div class="row">
+          <div class="field"><label for="c-name">Hall name</label><input id="c-name" required minlength="2" maxlength="60" placeholder="e.g. Hall D1"></div>
+          <div class="field"><label for="c-building">Building</label><input id="c-building" required maxlength="60" placeholder="e.g. Building D"></div>
+          <div class="field"><label for="c-rows">Rows (1–40)</label><input id="c-rows" type="number" min="1" max="40" step="1" required value="2"></div>
+          <div class="field"><label for="c-cols">Columns (1–40)</label><input id="c-cols" type="number" min="1" max="40" step="1" required value="3"></div>
+        </div>
+        <p class="muted small" id="c-preview"></p>
+        <button type="submit">Create hall</button>
+      </form>
+      <div id="create-msg"></div>
+    </section>
+
+    <section class="card">
+      <h2>Find a hall</h2>
+      <form id="filters" class="row">
+        <div><label for="q-name">Hall name</label><input id="q-name" maxlength="60"></div>
+        <div><label for="q-building">Building</label><input id="q-building" maxlength="60"></div>
+        <div><label for="q-min">Minimum usable seats</label><input id="q-min" type="number" min="0" max="1600"></div>
+        <div style="flex:0 0 auto"><label><input id="q-spacing" type="checkbox"> With spacing (alternate columns)</label></div>
+        <div style="flex:0 0 auto"><button type="submit">Search</button></div>
+      </form>
+      <div id="list-msg"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Hall</th><th>Building</th><th>Grid</th><th>Usable seats</th><th>With spacing</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+
+    <section class="card hidden" id="hall-card">
+      <div class="page-head" style="margin:0">
+        <div><h2 id="hall-title" tabindex="-1"></h2><p class="muted" id="hall-summary"></p></div>
+        <div class="actions admin-only hidden">
+          <button id="edit-btn" type="button" class="secondary">Edit / resize</button>
+          <button id="export-btn" type="button" class="secondary">Export to S3</button>
+          <button id="delete-btn" type="button" class="danger">Delete hall</button>
+        </div>
+      </div>
+      <div id="hall-msg"></div>
+
+      <form id="edit-form" class="hidden" novalidate>
+        <div class="row">
+          <div class="field"><label for="e-name">Hall name</label><input id="e-name" required minlength="2" maxlength="60"></div>
+          <div class="field"><label for="e-building">Building</label><input id="e-building" required maxlength="60"></div>
+          <div class="field"><label for="e-rows">Rows (1–40)</label><input id="e-rows" type="number" min="1" max="40" step="1" required></div>
+          <div class="field"><label for="e-cols">Columns (1–40)</label><input id="e-cols" type="number" min="1" max="40" step="1" required></div>
+        </div>
+        <div id="resize-impact"></div>
+        <div class="actions">
+          <button type="submit" id="save-edit">Save changes</button>
+          <button type="button" id="cancel-edit" class="secondary">Cancel</button>
+        </div>
+      </form>
+
+      <p class="muted small admin-only hidden">Click a seat to see who would be affected, then block or reopen it.</p>
+      <div class="front">FRONT (exam desk)</div>
+      <div id="seat-grid" class="seat-grid" aria-label="Seat grid"></div>
+      <div class="legend"><span>Available</span><span class="l-blocked">Blocked</span></div>
+      <div id="seat-panel"></div>
+    </section>
+
+    <section class="card">
+      <h2>Free halls for a time slot</h2>
+      <form id="avail-form" class="row">
+        <div><label for="a-date">Date</label><input id="a-date" type="date" required></div>
+        <div><label for="a-start">Start</label><input id="a-start" type="time" value="09:00" required></div>
+        <div><label for="a-duration">Duration (min)</label><input id="a-duration" type="number" min="30" max="300" step="15" value="120" required></div>
+        <div style="flex:0 0 auto"><button type="submit">Check</button></div>
+      </form>
+      <div id="avail-out"></div>
+    </section>
   </main>
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/layout.js"></script>
-  <script>ESP.initPage({ roles: ['admin', 'proctor'] });</script>
+  <script src="js/halls.js"></script>
 </body>
 </html>
