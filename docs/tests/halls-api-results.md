@@ -1,6 +1,6 @@
 # Hall & Seat Layout service — API test results (Floci)
 
-Run: 2026-11-28T01:14:03.360Z against the running stack (gateway :8080 → services → Neon + Floci SNS/SQS/S3). **22/22 passed.**
+Run: 2026-11-28T04:04:30.959Z against the running stack (gateway :8080 → services → Neon + Floci SNS/SQS/S3). **22/22 passed.**
 
 | ID | Type | Scenario | Expected | Actual | Result |
 |---|---|---|---|---|---|
@@ -17,7 +17,7 @@ Run: 2026-11-28T01:14:03.360Z against the running stack (gateway :8080 → servi
 | HA-N5 | Normal | Search with spacing=true uses odd columns (2x3 -> 4) | 200, spaced_seats=4 | 200 | PASS |
 | HA-N6 | Normal | Resize 2x3 -> 3x4 keeps seat ids | 200, 12 seats, original ids kept | 200 | PASS |
 | HA-O1 | Ownership | Block a seat id from another hall via this hall | 404 | 404 NOT_FOUND | PASS |
-| HA-N7 | Normal | Export layout -> objects exist in S3 esp-hall-layouts and match the saved grid | 201; CSV rows = seats; JSON statuses match | 201; keys=halls/4/layout-2026-11-28T01-13-18-839Z.csv halls/4/layout-2026-11-28T01-13-18-839Z.json csvRows=12 match=true | PASS |
+| HA-N7 | Normal | Export layout -> objects exist in S3 esp-hall-layouts and match the saved grid | 201; CSV rows = seats; JSON statuses match | 201; keys=halls/8/layout-2026-11-28T04-03-46-964Z.csv halls/8/layout-2026-11-28T04-03-46-964Z.json csvRows=12 match=true | PASS |
 | HA-N8 | Business rule | Availability: free before booking, busy for overlap and adjacent slot | free / busy / busy | exam 201; 18:00 free=true; 18:30 free=false; 19:00 free=false; 19:15 free=true | PASS |
 | HA-B1 | Business rule | Delete a hall used by an exam | 409 HALL_IN_USE | 409 HALL_IN_USE | PASS |
 | HA-B2 | Integration | Roster S1001-S1004, run + publish allocation on the test hall | import 201, run 201, publish 200 | import 201 accepted=4; run 201; publish 200 | PASS |

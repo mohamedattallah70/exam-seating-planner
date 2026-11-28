@@ -185,7 +185,11 @@ function policyFor(service) {
   ];
   const publish = { Sid: 'PublishDomainEvents', Effect: 'Allow', Action: 'sns:Publish', Resource: RESOURCES.topicArn };
   if (service === 'auth') st.push({ Sid: 'RevokedTokens', Effect: 'Allow', Action: ['dynamodb:GetItem', 'dynamodb:PutItem'], Resource: arn.table(RESOURCES.tables.revokedTokens) });
-  if (service === 'halls') st.push(publish, { Sid: 'LayoutExports', Effect: 'Allow', Action: ['s3:PutObject', 's3:GetObject'], Resource: `${arn.bucket(B.layouts)}/*` });
+  if (service === 'halls') {
+    st.push(publish, { Sid: 'LayoutExports', Effect: 'Allow', Action: ['s3:PutObject', 's3:GetObject'], Resource: `${arn.bucket(B.layouts)}/*` },
+      // read-only revocation check on every request (services/auth/revocation.js); only auth may write
+      { Sid: 'CheckRevokedTokens', Effect: 'Allow', Action: 'dynamodb:GetItem', Resource: arn.table(RESOURCES.tables.revokedTokens) });
+  }
   if (service === 'exams') {
     st.push(publish,
       { Sid: 'CalendarificKey', Effect: 'Allow', Action: 'secretsmanager:GetSecretValue', Resource: arn.secret(RESOURCES.secrets.calendarific) },
