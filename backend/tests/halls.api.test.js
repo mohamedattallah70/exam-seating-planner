@@ -72,6 +72,13 @@ async function waitFor(fn, ms = 45000) {
     return { actual: `${code(a)} / ${code(b)}`, pass: a.status === 403 && b.status === 403 };
   });
   await test('HA-S4', 'Unauthenticated', 'Forged/tampered JWT', '401', async () => expectStatus(await call('GET', '/halls', { token: `${admin.slice(0, -3)}abc` }), 401));
+  await test('HA-S5', 'Security', 'Logout revokes the token: Halls (separate process, via gateway) rejects it afterwards', 'before 200; logout 204; after 401 TOKEN_REVOKED', async () => {
+    const t = await login('proctor1@esp.test', env.SEED_STAFF_PASSWORD);
+    const before = await call('GET', '/halls', { token: t });
+    const out = await call('POST', '/auth/logout', { token: t });
+    const after = await call('GET', '/halls', { token: t });
+    return { actual: `${code(before)}; logout ${code(out)}; after ${code(after)}`, pass: before.status === 200 && out.status === 204 && after.status === 401 && after.data.error.code === 'TOKEN_REVOKED' };
+  });
 
   // ---------- all six routes + validation ----------
   await test('HA-I1', 'Invalid input', 'rows=0 / cols=41 / duplicate name', '400 / 400 / 409 HALL_NAME_TAKEN', async () => {

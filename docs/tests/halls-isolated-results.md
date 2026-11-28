@@ -1,6 +1,6 @@
 # Hall & Seat Layout service — isolated test results
 
-Run: 2026-11-27T23:41:35.400Z on **disposable storage**: in-memory PGlite Postgres loaded with `backend/db/schema.sql`, the real halls service, the real allocation worker (`reconcile.js`) and jsdom for the page. SNS, S3 and audit were in-memory recorders. **Not** run on Neon or Floci (see `halls-api-results.md` for that). **42/42 passed.**
+Run: 2026-11-28T00:35:08.011Z on **disposable storage**: in-memory PGlite Postgres loaded with `backend/db/schema.sql`, the real halls service, the real allocation worker (`reconcile.js`) and jsdom for the page. SNS, S3, DynamoDB and audit were in-memory fakes. **Not** run on Neon or Floci (see `halls-api-results.md` for that). **42/42 passed.**
 
 | ID | Type | Scenario | Expected | Actual | Result |
 |---|---|---|---|---|---|

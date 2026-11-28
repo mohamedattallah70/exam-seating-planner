@@ -6,79 +6,24 @@
 // nothing touches Neon or Floci. The Floci run is tests/halls.api.test.js.
 //   cd backend && npm run test:halls:isolated
 // Writes docs/tests/halls-isolated-results.md.
-const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const { PGlite } = require('@electric-sql/pglite');
 const { JSDOM } = require('jsdom');
+const H = require('./harness'); // installs the fakes first
 
-const backend = path.resolve(__dirname, '../..');
-const repo = path.resolve(backend, '..');
-const pg = new PGlite();
-
-// ---------- stubs (installed before any service module loads) ----------
-const wrapRes = (r) => ({ rows: r.rows, rowCount: r.affectedRows ?? r.rows.length });
-const stub = (rel, exports) => {
-  const file = require.resolve(path.join(backend, rel));
-  require.cache[file] = { id: file, filename: file, loaded: true, exports };
-};
-stub('shared/db', {
-  initDb: async () => {},
-  getPool: () => { throw new Error('not used'); },
-  query: async (text, params = []) => wrapRes(await pg.query(text, params)),
-  withTransaction: (fn) => pg.transaction(async (tx) => fn({ query: async (t, p = []) => wrapRes(await tx.query(t, p)) })),
-});
-stub('shared/secrets', { getSecret: async (id) => (id === 'esp/jwt' ? { secret: 'isolated-test-only-secret' } : {}) });
-const events = [];
-stub('shared/events', { publishEvent: async (type, payload, source) => { const e = { id: `evt-${events.length + 1}`, type, source, occurredAt: new Date().toISOString(), payload }; events.push(e); return e; } });
-const audits = [];
-stub('shared/audit', { audit: async (_req, action, o = {}) => { audits.push({ action, ...o }); } });
-const s3Objects = new Map();
-const fakeS3 = { send: async (cmd) => {
-  const { Bucket, Key, Body, ContentType } = cmd.input;
-  if (cmd.constructor.name === 'PutObjectCommand') { s3Objects.set(`${Bucket}/${Key}`, { Body, ContentType }); return {}; }
-  if (cmd.constructor.name === 'GetObjectCommand') {
-    const o = s3Objects.get(`${Bucket}/${Key}`);
-    if (!o) { const e = new Error('NoSuchKey'); e.name = 'NoSuchKey'; throw e; }
-    return { ContentType: o.ContentType, Body: { transformToString: async () => o.Body } };
-  }
-  return {};
-} };
-const noop = { send: async () => ({}) };
-stub('shared/aws', { s3: () => fakeS3, sns: () => noop, sqs: () => noop, events: () => noop, secrets: () => noop, logs: () => noop, cloudwatch: () => noop, dynamo: () => noop });
-// keep request logs out of the test output
-const origLog = console.log;
-console.log = (...a) => { if (typeof a[0] === 'string' && a[0].startsWith('{"time"')) return; origLog(...a); };
-
+const { backend, repo, q, events, audits, s3Objects, origLog, code, expectStatus } = H;
+const fs = require('fs');
 const halls = require(path.join(backend, 'services/halls/index.js'));
 const { requireAuth, signToken } = require(path.join(backend, 'shared/auth'));
 const worker = require(path.join(backend, 'services/allocation/worker.js'));
 
-// ---------- test helpers ----------
-const results = [];
+const { results, test } = H.makeTester();
 let API;
-async function call(method, url, { token, body } = {}) {
-  const headers = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
-  const res = await fetch(API + url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
-  const text = res.status === 204 ? '' : await res.text();
-  let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  return { status: res.status, data };
-}
-async function test(idTag, type, scenario, expected, fn) {
-  let actual; let pass;
-  try { ({ actual, pass } = await fn()); } catch (e) { actual = `ERROR ${e.message}`; pass = false; }
-  results.push({ idTag, type, scenario, expected, actual, pass });
-  origLog(`${pass ? 'PASS' : 'FAIL'} ${idTag} ${scenario} -> ${actual}`);
-}
-const code = (r) => `${r.status}${r.data?.error ? ` ${r.data.error.code}` : ''}`;
-const expectStatus = (r, s, extra = true, note = '') => ({ actual: `${code(r)}${note ? `; ${note}` : ''}`, pass: r.status === s && extra });
-const q = async (sql, p) => (await pg.query(sql, p)).rows;
+const call = H.makeClient(() => API);
 const deliver = (e) => worker.handle({ MessageId: e.id, Body: JSON.stringify({ Type: 'Notification', Message: JSON.stringify(e) }) });
 
 (async () => {
-  await pg.exec(fs.readFileSync(path.join(backend, 'db/schema.sql'), 'utf8'));
+  await H.loadSchema();
   const mkUser = async (name, email, role, studentCode = null) => (await q(
     'INSERT INTO users (name, email, role, student_code, password_hash) VALUES ($1,$2,$3,$4,$5) RETURNING id, name, role, student_code',
     [name, email, role, studentCode, 'not-a-real-hash']))[0];
@@ -92,7 +37,7 @@ const deliver = (e) => worker.handle({ MessageId: e.id, Body: JSON.stringify({ T
   const gw = express();
   gw.get('/api/auth/me', requireAuth(), (req, res) => res.json({ id: req.user.id, name: req.user.name, role: req.user.role }));
   gw.use(halls.app);
-  const server = await new Promise((resolve) => { const s = gw.listen(0, '127.0.0.1', () => resolve(s)); });
+  const server = await H.listen(gw);
   API = `http://127.0.0.1:${server.address().port}/api`;
 
   // ================= Milestone 1: CRUD + roles =================
@@ -408,20 +353,7 @@ const deliver = (e) => worker.handle({ MessageId: e.id, Body: JSON.stringify({ T
 
   // ---------- report ----------
   server.close();
-  const passed = results.filter((r) => r.pass).length;
-  const esc = (s) => String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
-  const md = [
-    '# Hall & Seat Layout service — isolated test results',
-    '',
-    `Run: ${new Date().toISOString()} on **disposable storage**: in-memory PGlite Postgres loaded with \`backend/db/schema.sql\`, the real halls service, the real allocation worker (\`reconcile.js\`) and jsdom for the page. SNS, S3 and audit were in-memory recorders. **Not** run on Neon or Floci (see \`halls-api-results.md\` for that). **${passed}/${results.length} passed.**`,
-    '',
-    '| ID | Type | Scenario | Expected | Actual | Result |',
-    '|---|---|---|---|---|---|',
-    ...results.map((r) => `| ${r.idTag} | ${r.type} | ${esc(r.scenario)} | ${esc(r.expected)} | ${esc(r.actual)} | ${r.pass ? 'PASS' : 'FAIL'} |`),
-    '',
-  ].join('\n');
-  fs.mkdirSync(path.join(repo, 'docs/tests'), { recursive: true });
-  fs.writeFileSync(path.join(repo, 'docs/tests/halls-isolated-results.md'), md);
-  origLog(`\n${passed}/${results.length} passed. Wrote docs/tests/halls-isolated-results.md`);
-  process.exit(passed === results.length ? 0 : 1);
+  const ok = H.writeReport('halls-isolated-results.md', 'Hall & Seat Layout service — isolated test results',
+    'in-memory PGlite Postgres loaded with `backend/db/schema.sql`, the real halls service, the real allocation worker (`reconcile.js`) and jsdom for the page. SNS, S3, DynamoDB and audit were in-memory fakes. **Not** run on Neon or Floci (see `halls-api-results.md` for that).', results);
+  process.exit(ok ? 0 : 1);
 })().catch((e) => { origLog(e); process.exit(1); });

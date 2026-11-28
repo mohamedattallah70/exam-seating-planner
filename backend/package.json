@@ -13,7 +13,8 @@
     "test:exams": "node tests/exams.api.test.js",
     "test:alloc": "node tests/allocation.api.test.js",
     "test:halls": "node tests/halls.api.test.js",
-    "test:halls:isolated": "npm --prefix tests/halls-isolated install --no-audit --no-fund --silent && node tests/halls-isolated/run.js"
+    "test:halls:isolated": "npm --prefix tests/isolated install --no-audit --no-fund --silent && node tests/isolated/halls.js",
+    "test:auth:isolated": "npm --prefix tests/isolated install --no-audit --no-fund --silent && node tests/isolated/auth.js"
   },
   "keywords": [],
   "author": "",
