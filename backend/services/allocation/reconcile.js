@@ -17,8 +17,8 @@ async function reconcile(examId) {
   return withTransaction(async (client) => {
     await svc.lockExam(client, examId);
     let exam;
-    try { exam = await svc.getExam(examId, client); } catch { return { examId, skipped: 'exam deleted' }; }
-    if (exam.allocation_status === 'none') return { examId, status: 'none', changed: false };
+    try { exam = await svc.getExam(examId, client); } catch { return { examId, skipped: 'exam deleted', relocated: [], unplaced: [] }; }
+    if (exam.allocation_status === 'none') return { examId, status: 'none', before: 'none', changed: false, removed: 0, relocated: [], seated: [], unplaced: [] };
 
     const removed = (await client.query(
       `DELETE FROM seat_assignments a USING seats s

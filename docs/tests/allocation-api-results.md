@@ -1,6 +1,6 @@
 # Seat Allocation & Lookup service — API test results
 
-Run: 2026-11-27T22:02:53.238Z against the deployed stack (gateway → services → Neon + Floci, SNS → SQS → worker). **25/25 passed.**
+Run: 2026-11-28T14:54:31.426Z against the deployed stack (gateway → services → Neon + Floci, SNS → SQS → worker). **25/25 passed.**
 
 | ID | Type | Scenario | Expected | Actual | Result |
 |---|---|---|---|---|---|
