@@ -14,7 +14,8 @@
     "test:alloc": "node tests/allocation.api.test.js",
     "test:halls": "node tests/halls.api.test.js",
     "test:halls:isolated": "npm --prefix tests/isolated install --no-audit --no-fund --silent && node tests/isolated/halls.js",
-    "test:auth:isolated": "npm --prefix tests/isolated install --no-audit --no-fund --silent && node tests/isolated/auth.js"
+    "test:auth:isolated": "npm --prefix tests/isolated install --no-audit --no-fund --silent && node tests/isolated/auth.js",
+    "evidence:monitoring": "node tests/monitoring.evidence.js"
   },
   "keywords": [],
   "author": "",
